@@ -285,5 +285,10 @@ ifeq ($(wildcard $(FREERTOS_PORT_DIR)),)
 $(error Port directory not found: $(FREERTOS_PORT_DIR))
 endif
 
+rtos_clone:
+	cd $(PROJECT_DIR)/FreeRTOS_port && \
+	git submodule init && \
+	git submodule update
+
 
 
