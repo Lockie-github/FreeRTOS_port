@@ -13,7 +13,7 @@ CMAKE_LISTS := $(PROJECT_DIR)/CMakeLists.txt
 # 防止make默认命令为rtos_init
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-.PHONY: rtos_init create_config update_cmakelists
+.PHONY: rtos_init rtos_clone create_config update_cmakelists
 
 rtos_init: create_config update_cmakelists
 	@echo "------------------------"
@@ -70,7 +70,10 @@ SUPPORTED_FREERTOS_PORTS := GCC_ARM_CM0 \
 
 SUPPORTED_FREERTOS_HEAPS := 1 2 3 4 5
 
-# CMake 辅助模式允许两个变量都不设置；GNU Make 模式必须同时设置并通过校验
+# 仅纯辅助目标允许两个变量都不设置；GNU Make 构建必须同时设置并通过校验
+FREERTOS_HELPER_GOALS := rtos_init rtos_clone create_config update_cmakelists
+FREERTOS_NON_HELPER_GOALS := $(filter-out $(FREERTOS_HELPER_GOALS),$(MAKECMDGOALS))
+FREERTOS_HELPER_ONLY := $(if $(strip $(MAKECMDGOALS)),$(if $(FREERTOS_NON_HELPER_GOALS),,1),)
 FREERTOS_MAKE_CONFIGURED := $(strip $(FREERTOS_PORT)$(FREERTOS_HEAP))
 
 ifneq ($(FREERTOS_MAKE_CONFIGURED),)
@@ -93,8 +96,10 @@ ifneq ($(FREERTOS_MAKE_CONFIGURED),)
   ifeq ($(filter $(strip $(FREERTOS_HEAP)),$(SUPPORTED_FREERTOS_HEAPS)),)
     $(error Unsupported FREERTOS_HEAP '$(FREERTOS_HEAP)'. Supported values: $(SUPPORTED_FREERTOS_HEAPS))
   endif
-else ifeq ($(wildcard $(CMAKE_LISTS)),)
-  $(error FREERTOS_PORT and FREERTOS_HEAP are required for GNU Make builds)
+else
+  ifeq ($(FREERTOS_HELPER_ONLY),)
+    $(error FREERTOS_PORT and FREERTOS_HEAP are required for GNU Make builds)
+  endif
 endif
 
 # 公共 FreeRTOS 源文件
