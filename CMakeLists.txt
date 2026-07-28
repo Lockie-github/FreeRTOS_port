@@ -9,6 +9,16 @@ target_include_directories(freertos_config SYSTEM INTERFACE
     ${CMAKE_SOURCE_DIR}
 )
 
+if(NOT TARGET stm32cubemx)
+    message(FATAL_ERROR
+        "stm32cubemx target must be defined before adding FreeRTOS_port")
+endif()
+
+# Reuse the CubeMX device definitions and include paths required by main.h.
+target_link_libraries(freertos_config INTERFACE
+    stm32cubemx
+)
+
 # Add FreeRTOS kernel using official CMakeLists.txt
 add_subdirectory(FreeRTOS-Kernel)
 
