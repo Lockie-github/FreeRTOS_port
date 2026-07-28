@@ -216,7 +216,10 @@ FREERTOS_INCLUDES = FreeRTOS_port/FreeRTOS-Kernel \
                     $(PROJECT_DIR)
 
 # 各 core 类型对应的 port 文件 + 头文件路径
-PORT_DIR = FreeRTOS_port/FreeRTOS-Kernel/portable/GCC
+PORTABLE_DIR = FreeRTOS_port/FreeRTOS-Kernel/portable
+PORT_DIR = $(PORTABLE_DIR)/GCC
+MPU_COMMON_SOURCES = $(PORTABLE_DIR)/Common/mpu_wrappers.c \
+                     $(PORTABLE_DIR)/Common/mpu_wrappers_v2.c
 
 ifeq ($(CFG_CORE),ARM_CM0)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM0/port.c
@@ -229,6 +232,7 @@ else ifeq ($(CFG_CORE),ARM_CM3)
 else ifeq ($(CFG_CORE),ARM_CM3_MPU)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM3_MPU/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM3_MPU/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM3_MPU
 else ifeq ($(CFG_CORE),ARM_CM4F)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM4F/port.c
@@ -236,12 +240,12 @@ else ifeq ($(CFG_CORE),ARM_CM4F)
 else ifeq ($(CFG_CORE),ARM_CM4_MPU)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM4_MPU/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM4_MPU/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM4_MPU
 else ifeq ($(CFG_CORE),ARM_CM7)
-  FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM4F/port.c
-  FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM4F
+  FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM7/r0p1/port.c
+  FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM7/r0p1
 else ifeq ($(CFG_CORE),ARM_CM33_SECURE)
-  FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/secure/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/secure/secure_context_port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/secure/secure_context.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/secure/secure_heap.c
@@ -251,16 +255,19 @@ else ifeq ($(CFG_CORE),ARM_CM33_NONSECURE)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/non_secure/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/non_secure/portasm.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33/non_secure/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM33/non_secure
 else ifeq ($(CFG_CORE),ARM_CM33_NTZ_NONSECURE)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33_NTZ/non_secure/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33_NTZ/non_secure/portasm.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM33_NTZ/non_secure/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM33_NTZ/non_secure
 else ifeq ($(CFG_CORE),ARM_CM55_NONSECURE)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55/non_secure/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55/non_secure/portasm.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55/non_secure/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM55/non_secure
 else ifeq ($(CFG_CORE),ARM_CM55_SECURE)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55/secure/secure_context_port.c
@@ -272,6 +279,7 @@ else ifeq ($(CFG_CORE),ARM_CM55_NTZ_NONSECURE)
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55_NTZ/non_secure/port.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55_NTZ/non_secure/portasm.c
   FREERTOS_SOURCES += $(PORT_DIR)/ARM_CM55_NTZ/non_secure/mpu_wrappers_v2_asm.c
+  FREERTOS_SOURCES += $(MPU_COMMON_SOURCES)
   FREERTOS_INCLUDES += $(PORT_DIR)/ARM_CM55_NTZ/non_secure
 else ifeq ($(wildcard $(CMAKE_LISTS)),)
   $(error Unknown CFG_CORE: $(CFG_CORE))
@@ -289,6 +297,5 @@ rtos_clone:
 	cd $(PROJECT_DIR)/FreeRTOS_port && \
 	git submodule init && \
 	git submodule update
-
 
 
