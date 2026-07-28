@@ -1,19 +1,13 @@
-/**
-  ******************************************************************************
-  * @file    freertos_callbacks.c
-  * @brief   FreeRTOS callback functions for static memory allocation
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+/*
+ * FreeRTOS application callbacks.
+ *
+ * Derived from CMSIS-FreeRTOS cmsis_os2.c.
+ * Copyright (c) 2013-2020 Arm Limited. All rights reserved.
+ * Modifications Copyright (c) 2026 Lockie.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ * See LICENSES/Apache-2.0.txt for the full license text.
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
