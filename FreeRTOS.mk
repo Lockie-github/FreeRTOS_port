@@ -13,7 +13,7 @@ CMAKE_LISTS := $(PROJECT_DIR)/CMakeLists.txt
 # 防止make默认命令为rtos_init
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
-.PHONY: rtos_init rtos_clone create_config update_cmakelists
+.PHONY: all rtos_init rtos_clone create_config update_cmakelists
 
 rtos_init: create_config update_cmakelists
 	@echo "------------------------"
@@ -195,6 +195,5 @@ $(error Port directory not found: $(FREERTOS_PORT_DIR))
 endif
 
 rtos_clone:
-	cd $(PROJECT_DIR)/FreeRTOS_port && \
-	git submodule init && \
-	git submodule update
+	cd "$(PROJECT_DIR)/FreeRTOS_port" && \
+	git submodule update --init --recursive
