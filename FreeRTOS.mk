@@ -70,10 +70,9 @@ SUPPORTED_FREERTOS_PORTS := GCC_ARM_CM0 \
 
 SUPPORTED_FREERTOS_HEAPS := 1 2 3 4 5
 
-# 仅纯辅助目标允许两个变量都不设置；GNU Make 构建必须同时设置并通过校验
-FREERTOS_HELPER_GOALS := rtos_init rtos_clone create_config update_cmakelists
-FREERTOS_NON_HELPER_GOALS := $(filter-out $(FREERTOS_HELPER_GOALS),$(MAKECMDGOALS))
-FREERTOS_HELPER_ONLY := $(if $(strip $(MAKECMDGOALS)),$(if $(FREERTOS_NON_HELPER_GOALS),,1),)
+# 无显式目标或显式请求 all 时才是 GNU Make 构建。
+# Cube-CMake 工程也会 include 本文件，但 d/r/preset/clean 等目标的参数由 CMakeLists.txt 提供。
+FREERTOS_MAKE_BUILD_REQUESTED := $(if $(strip $(MAKECMDGOALS)),$(filter all,$(MAKECMDGOALS)),1)
 FREERTOS_MAKE_CONFIGURED := $(strip $(FREERTOS_PORT)$(FREERTOS_HEAP))
 
 ifneq ($(FREERTOS_MAKE_CONFIGURED),)
@@ -97,7 +96,7 @@ ifneq ($(FREERTOS_MAKE_CONFIGURED),)
     $(error Unsupported FREERTOS_HEAP '$(FREERTOS_HEAP)'. Supported values: $(SUPPORTED_FREERTOS_HEAPS))
   endif
 else
-  ifeq ($(FREERTOS_HELPER_ONLY),)
+  ifneq ($(FREERTOS_MAKE_BUILD_REQUESTED),)
     $(error FREERTOS_PORT and FREERTOS_HEAP are required for GNU Make builds)
   endif
 endif
