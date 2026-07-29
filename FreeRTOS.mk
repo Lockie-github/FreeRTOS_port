@@ -196,4 +196,4 @@ endif
 
 rtos_clone:
 	cd "$(PROJECT_DIR)/FreeRTOS_port" && \
-	git submodule update --init --recursive
+	git submodule update --init FreeRTOS-Kernel

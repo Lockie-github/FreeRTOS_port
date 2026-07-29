@@ -83,14 +83,16 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TICK_HOOK                      0
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       1000U
-#define configMAX_PRIORITIES                     56U
+
+/* Conservative starting values for small-RAM STM32 devices; review per project. */
+#define configMAX_PRIORITIES                     8U
 #define configMINIMAL_STACK_SIZE                 ( ( uint16_t ) 128U )
-#define configTOTAL_HEAP_SIZE                    ( ( size_t ) 15360U )
+#define configTOTAL_HEAP_SIZE                    ( ( size_t ) 1024U )
 #define configMAX_TASK_NAME_LEN                  16U
-#define configUSE_TRACE_FACILITY                 1
+#define configUSE_TRACE_FACILITY                 0
 #define configTICK_TYPE_WIDTH_IN_BITS            TICK_TYPE_WIDTH_32_BITS
 #define configUSE_MUTEXES                        1
-#define configQUEUE_REGISTRY_SIZE                8U
+#define configQUEUE_REGISTRY_SIZE                0U
 #define configUSE_RECURSIVE_MUTEXES              1
 #define configUSE_COUNTING_SEMAPHORES            1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION  0
@@ -101,10 +103,10 @@ extern uint32_t SystemCoreClock;
 #define configMAX_CO_ROUTINE_PRIORITIES          2U
 
 /* Software timer definitions. */
-#define configUSE_TIMERS                         1
+#define configUSE_TIMERS                         0
 #define configTIMER_TASK_PRIORITY                2U
-#define configTIMER_QUEUE_LENGTH                 10U
-#define configTIMER_TASK_STACK_DEPTH             256U
+#define configTIMER_QUEUE_LENGTH                 5U
+#define configTIMER_TASK_STACK_DEPTH             128U
 
 /* Optional API functions. */
 #define INCLUDE_vTaskPrioritySet                 1
@@ -115,7 +117,7 @@ extern uint32_t SystemCoreClock;
 #define INCLUDE_vTaskDelayUntil                  1
 #define INCLUDE_vTaskDelay                       1
 #define INCLUDE_xTaskGetSchedulerState           1
-#define INCLUDE_xTimerPendFunctionCall           1
+#define INCLUDE_xTimerPendFunctionCall           0
 #define INCLUDE_xQueueGetMutexHolder             1
 #define INCLUDE_uxTaskGetStackHighWaterMark      1
 #define INCLUDE_xTaskGetCurrentTaskHandle        1
@@ -126,7 +128,11 @@ extern uint32_t SystemCoreClock;
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY  ( ( 1U << configPRIO_BITS ) - 1U )
 
 #ifndef configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
-    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY    5U
+    #if ( configPRIO_BITS <= 2U )
+        #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY    1U
+    #else
+        #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY    5U
+    #endif
 #endif
 
 #if ( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY == 0U )
