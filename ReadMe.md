@@ -6,6 +6,7 @@
   - [移植之前](#移植之前)
   - [使用 GNU Make](#使用-gnu-make)
   - [使用 Cube-CMake](#使用-cube-cmake)
+  - [处理 CubeMX 系统异常函数](#处理-cubemx-系统异常函数)
   - [用户手动配置参数参考](#用户手动配置参数参考)
   - [FreeRTOSConfig.h 关键配置项](#freertosconfigh-关键配置项)
     - [参数单位和内存归属](#参数单位和内存归属)
@@ -20,7 +21,12 @@
 - [修订记录](#修订记录)
 - [更新记录](#更新记录)
   - [\[11.3.0-2.0.0\] - 2026-07-28](#1130-200---2026-07-28)
+    - [Breaking Changes](#breaking-changes)
+    - [Added](#added)
+    - [Fixed](#fixed)
+    - [Changed](#changed)
   - [\[11.3.0-1.0.0\] - 2026-04-04](#1130-100---2026-04-04)
+    - [Added](#added-1)
 
 ---
 
@@ -50,6 +56,11 @@
 
 # 移植
 ## 移植之前
+
+在创建或生成 STM32CubeMX 工程之前，必须先在 `System Core > SYS` 中将 HAL 的 `Timebase Source` 设置为一个可用的 TIM，不能继续使用默认的 SysTick。SysTick 需要保留给 FreeRTOS 内核产生系统节拍；如果 HAL 同时使用 SysTick，FreeRTOS 接管中断后，`HAL_GetTick()`、`HAL_Delay()` 和依赖 HAL 超时的驱动可能停止正常计时。
+
+> 这里调整的是 **HAL timebase**，不是关闭 FreeRTOS tick。具体选择哪个 TIM 取决于芯片资源和应用的定时器分配。设置完成后再生成工程，可以避免移植过程中重新修改 CubeMX 配置和生成文件。
+
 首先建议配置ARM_SEGGER_RTT作为烧录、调试工具,仓库为[RTT](https://github.com/Lockie-github/ARM_SEGGER_RTT.git),此仓库同样适配了**GNU Make** 和 **STM32 for VSCode插件的cube-CMake**,请前往github仓库阅读readme进行配置,或直接clone到本地,参照`ARM_SEGGER_RTT/readme.md`进行配置
 ```bash
 git clone https://github.com/Lockie-github/ARM_SEGGER_RTT.git
@@ -82,9 +93,13 @@ C_INCLUDES += $(EXTRA_INCLUDES)
 make rtos_clone
 make rtos_init
 ```
-以上命令会将 `FreeRTOS_port/templates/FreeRTOSConfig.h` 复制到工程根目录。若目标文件已经存在则不会覆盖，应用参数可以直接在工程根目录的配置文件中修改。
+以上命令会将 `FreeRTOS_port/templates/FreeRTOSConfig.h` 复制到工程根目录。若目标文件已经存在则不会覆盖，应用参数可以直接在工程根目录的配置文件中修改，具体含义和调整方法可参考 [FreeRTOSConfig.h 关键配置项](#freertosconfigh-关键配置项)。
 
-4. 编译验证
+4. 处理 CubeMX 生成的系统异常函数
+
+编译前必须按照[处理 CubeMX 系统异常函数](#处理-cubemx-系统异常函数)中的说明，让 FreeRTOS port 接管 `SVC_Handler`、`PendSV_Handler` 和 `SysTick_Handler`。
+
+5. 编译验证
 编写测试文件:
 在main.c中对应位置添加:
 ```C
@@ -162,7 +177,7 @@ include FreeRTOS_port/FreeRTOS.mk
 make rtos_clone
 make rtos_init
 ```
-以上命令会初始化 FreeRTOS-Kernel 子模块、从模板创建工程根目录下的 `FreeRTOSConfig.h`，并向根目录的 `CMakeLists.txt` 追加 FreeRTOS 配置。已有的 `FreeRTOSConfig.h` 不会被覆盖。
+以上命令会初始化 FreeRTOS-Kernel 子模块、从模板创建工程根目录下的 `FreeRTOSConfig.h`，并向根目录的 `CMakeLists.txt` 追加 FreeRTOS 配置。已有的 `FreeRTOSConfig.h` 不会被覆盖。用户需要根据 [FreeRTOSConfig.h 关键配置项](#freertosconfigh-关键配置项)检查应用配置。
 
 > **不要同时启用 CubeMX 自带的 FreeRTOS/CMSIS-RTOS middleware**。如果 `cmake/stm32cubemx/CMakeLists.txt` 中仍包含 `FreeRTOS_Src`、`add_library(FreeRTOS OBJECT)` 或旧 FreeRTOS include 路径，应先在 CubeMX 中关闭对应 middleware 并重新生成工程，否则可能重复编译 `tasks.c`、`queue.c`、`port.c`，或混用不同版本的 `FreeRTOS.h`。
 
@@ -183,7 +198,11 @@ add_subdirectory(FreeRTOS_port)
 
 不要把 `add_subdirectory(FreeRTOS_port)` 放在 `add_subdirectory(cmake/stm32cubemx)` 之前，否则 CMake 会报告 `stm32cubemx target must be defined before adding FreeRTOS_port`。
 
-4. 构建、编译验证
+4. 处理 CubeMX 生成的系统异常函数
+
+编译前必须按照[处理 CubeMX 系统异常函数](#处理-cubemx-系统异常函数)中的说明，让 FreeRTOS port 接管 `SVC_Handler`、`PendSV_Handler` 和 `SysTick_Handler`。
+
+5. 构建、编译验证
 编写测试文件:
 在main.c中对应位置添加:
 ```C
@@ -250,6 +269,31 @@ make preset_debug
 make d
 ```
 其他相关命令请查阅Makefile
+
+---
+
+## 处理 CubeMX 系统异常函数
+
+`FreeRTOSConfig.h` 将 FreeRTOS port 的处理函数映射为启动文件使用的 `SVC_Handler`、`PendSV_Handler` 和 `SysTick_Handler`。因此 CubeMX 生成的工程不能再提供另一套同名函数定义，否则链接时会发生重复定义，或中断没有进入 FreeRTOS port。
+
+1. 确认已经按照[移植之前](#移植之前)的要求，将 HAL `Timebase Source` 设置为可用的 TIM。如果现有工程仍使用 SysTick，应先修改 CubeMX 配置并重新生成工程，再继续下面的处理。
+2. 在 `Core/Src/stm32xxxx_it.c` 中找到并注释或删除以下三个函数的完整定义，`stm32xxxx` 应替换为实际系列名称，例如 STM32F0 工程通常为 `stm32f0xx_it.c`：
+
+```c
+/* void SVC_Handler(void) { ... } */
+/* void PendSV_Handler(void) { ... } */
+/* void SysTick_Handler(void) { ... } */
+```
+
+3. 建议同时在 `Core/Inc/stm32xxxx_it.h` 中注释对应声明，避免头文件继续表示这些函数由 CubeMX 中断文件实现。仅保留声明本身不会造成链接冲突，但不能保留上一步中的函数定义：
+
+```c
+/* void SVC_Handler(void); */
+/* void PendSV_Handler(void); */
+/* void SysTick_Handler(void); */
+```
+
+CubeMX 重新生成代码时可能恢复这些声明和定义。每次重新生成后都应复查上述文件，并确认工程中只有 FreeRTOS port 提供这三个处理函数。
 
 ---
 
