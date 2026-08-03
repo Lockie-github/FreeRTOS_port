@@ -20,7 +20,7 @@
 - [测试状态](#测试状态)
 - [修订记录](#修订记录)
 - [更新记录](#更新记录)
-  - [\[11.3.0-2.0.0\] - 2026-07-28](#1130-200---2026-07-28)
+  - [\[11.3.0-2.0.0\] - 2026-08-03](#1130-200---2026-08-03)
     - [Breaking Changes](#breaking-changes)
     - [Added](#added)
     - [Fixed](#fixed)
@@ -61,17 +61,21 @@
 
 > 这里调整的是 **HAL timebase**，不是关闭 FreeRTOS tick。具体选择哪个 TIM 取决于芯片资源和应用的定时器分配。设置完成后再生成工程，可以避免移植过程中重新修改 CubeMX 配置和生成文件。
 
-首先建议配置ARM_SEGGER_RTT作为烧录、调试工具,仓库为[RTT](https://github.com/Lockie-github/ARM_SEGGER_RTT.git),此仓库同样适配了**GNU Make** 和 **STM32 for VSCode插件的cube-CMake**,请前往github仓库阅读readme进行配置,或直接clone到本地,参照`ARM_SEGGER_RTT/readme.md`进行配置
+如需使用 RTT 日志进行实机验证，建议同时配置 [ARM_SEGGER_RTT](https://github.com/Lockie-github/ARM_SEGGER_RTT)。该仓库同样支持 GNU Make 和 STM32 for VSCode 的 Cube-CMake 构建流程，具体配置方法请参考其 README：
+
 ```bash
 git clone https://github.com/Lockie-github/ARM_SEGGER_RTT.git
 ```
 
 ## 使用 GNU Make
-1. 拉取本仓库到STM32CubeMX生成的Makefile工程路径下
+1. 将本仓库拉取到 STM32CubeMX 生成的 Makefile 工程根目录下：
+
 ```bash
 git clone https://github.com/Lockie-github/FreeRTOS_port.git
 ```
-2. 在主Makefile中引用FreeRTOS_port模块
+
+2. 在主 Makefile 中引用 `FreeRTOS_port` 模块。
+
 在主 Makefile 中 `# compile gcc flags` 前添加以下内容，并将占位符替换为实际值，可参考[配置参数](#用户手动配置参数参考)。
 ```makefile
 # *** FreeRTOS config ***
@@ -87,22 +91,26 @@ C_SOURCES += $(EXTRA_C_SOURCES)
 C_INCLUDES += $(EXTRA_INCLUDES)
 # compile gcc flags
 ```
-3. 初始化配置文件
-运行命令
+3. 初始化配置文件。
+
+运行以下命令，先初始化 FreeRTOS-Kernel，再创建工程配置文件：
+
 ```bash
 make rtos_clone
 make rtos_init
 ```
+
 以上命令会将 `FreeRTOS_port/templates/FreeRTOSConfig.h` 复制到工程根目录。若目标文件已经存在则不会覆盖，应用参数可以直接在工程根目录的配置文件中修改，具体含义和调整方法可参考 [FreeRTOSConfig.h 关键配置项](#freertosconfigh-关键配置项)。
 
 4. 处理 CubeMX 生成的系统异常函数
 
 编译前必须按照[处理 CubeMX 系统异常函数](#处理-cubemx-系统异常函数)中的说明，让 FreeRTOS port 接管 `SVC_Handler`、`PendSV_Handler` 和 `SysTick_Handler`。
 
-5. 编译验证
-编写测试文件:
-在main.c中对应位置添加:
-```C
+5. 编译验证。
+
+在 `main.c` 的对应 USER CODE 区域添加测试代码：
+
+```c
 /* USER CODE BEGIN Includes */
 #include "rtt_log.h"
 #include "FreeRTOS.h"
@@ -153,35 +161,43 @@ static void vTestTask(void *pvParameters)
 }
 /* USER CODE END 4 */
 ```
-编译
+编译工程：
+
 ```bash
 make -j
-
 ```
-其他相关命令请查阅Makefile
+
+其他相关命令请查阅工程的主 Makefile。
 
 ---
    
 ## 使用 Cube-CMake
-1. 拉取本仓库到STM32CubeMX生成的CMake工程路径下
+1. 将本仓库拉取到 STM32CubeMX 生成的 CMake 工程根目录下：
+
 ```bash
 git clone https://github.com/Lockie-github/FreeRTOS_port.git
 ```
-2. 在主Makefile中引用FreeRTOS_port模块
-```
+
+2. 在工程的主 Makefile 中引用 `FreeRTOS_port` 模块，以使用初始化辅助目标：
+
+```makefile
 include FreeRTOS_port/FreeRTOS.mk
 ```
-3. 初始化配置文件
-运行命令
+
+3. 初始化配置文件。
+
+运行以下命令，先初始化 FreeRTOS-Kernel，再创建并更新工程配置：
+
 ```bash
 make rtos_clone
 make rtos_init
 ```
+
 以上命令会初始化 FreeRTOS-Kernel 子模块、从模板创建工程根目录下的 `FreeRTOSConfig.h`，并向根目录的 `CMakeLists.txt` 追加 FreeRTOS 配置。已有的 `FreeRTOSConfig.h` 不会被覆盖。用户需要根据 [FreeRTOSConfig.h 关键配置项](#freertosconfigh-关键配置项)检查应用配置。
 
 > **不要同时启用 CubeMX 自带的 FreeRTOS/CMSIS-RTOS middleware**。如果 `cmake/stm32cubemx/CMakeLists.txt` 中仍包含 `FreeRTOS_Src`、`add_library(FreeRTOS OBJECT)` 或旧 FreeRTOS include 路径，应先在 CubeMX 中关闭对应 middleware 并重新生成工程，否则可能重复编译 `tasks.c`、`queue.c`、`port.c`，或混用不同版本的 `FreeRTOS.h`。
 
-配置工程参数:
+配置工程参数：
 在根目录的 `CMakeLists.txt` 中找到脚本追加的数据，将 `__TODO_REPLACE_PORT__` 和 `__TODO_REPLACE_HEAP__` 替换为实际值，可参考[配置参数](#用户手动配置参数参考)。
 
 > **CMake 添加顺序必须正确**：`FreeRTOS_port` 会继承 CubeMX 的 `stm32cubemx` INTERFACE target，以获得 `main.h`、HAL/CMSIS 头文件路径和 MCU 宏。因此必须先执行 `add_subdirectory(cmake/stm32cubemx)`，再设置 FreeRTOS 参数并添加 `FreeRTOS_port`。
@@ -202,10 +218,11 @@ add_subdirectory(FreeRTOS_port)
 
 编译前必须按照[处理 CubeMX 系统异常函数](#处理-cubemx-系统异常函数)中的说明，让 FreeRTOS port 接管 `SVC_Handler`、`PendSV_Handler` 和 `SysTick_Handler`。
 
-5. 构建、编译验证
-编写测试文件:
-在main.c中对应位置添加:
-```C
+5. 构建并编译验证。
+
+在 `main.c` 的对应 USER CODE 区域添加测试代码：
+
+```c
 /* USER CODE BEGIN Includes */
 #include "rtt_log.h"
 #include "FreeRTOS.h"
@@ -259,16 +276,17 @@ static void vTestTask(void *pvParameters)
 
 构建:
 
-```Bash
+```bash
 make preset_debug
 ```
 
 编译:
 
-```Bash
+```bash
 make d
 ```
-其他相关命令请查阅Makefile
+
+其他相关命令请查阅工程的主 Makefile。
 
 ---
 
@@ -308,12 +326,12 @@ Make 和 CMake 使用相同的参数名与参数值。构建系统只需要设�
 
 | `FREERTOS_PORT` (Make / CMake) | 适用芯片 | 额外说明 |
 |--------------------------------|---------|---------|
-| `GCC_ARM_CM0` | Cortex-M0 / M0+ | 源码映射已实现，尚未使用实际工程验证 |
-| `GCC_ARM_CM3` | Cortex-M3 | 已使用 STM32F103 工程参数通过编译检查 |
+| `GCC_ARM_CM0` | Cortex-M0 / M0+ | 已使用 STM32F042G6U6 完成 GNU Make 和 Cube-CMake 实机验证 |
+| `GCC_ARM_CM3` | Cortex-M3 | 已使用 STM32F103C8T6 完成 GNU Make 和 Cube-CMake 实机验证 |
 | `GCC_ARM_CM3_MPU` | Cortex-M3 (带 MPU) | 映射已实现；必须配置系统调用栈和内核对象池大小 |
-| `GCC_ARM_CM4F` | Cortex-M4 (带 FPU) | 已使用 STM32F411 完成编译和基本功能验证 |
+| `GCC_ARM_CM4F` | Cortex-M4 (带 FPU) | 已使用 STM32F411CEU6 完成 GNU Make 和 Cube-CMake 实机验证 |
 | `GCC_ARM_CM4_MPU` | Cortex-M4 (带 MPU) | 映射已实现；必须配置系统调用栈和内核对象池大小 |
-| `GCC_ARM_CM7` | Cortex-M7 | 使用官方 `ARM_CM7/r0p1` port，已使用 STM32H7 工程参数通过编译检查 |
+| `GCC_ARM_CM7` | Cortex-M7 | 使用官方 `ARM_CM7/r0p1` port，已使用 STM32H7B0VBT6 完成 GNU Make 和 Cube-CMake 实机验证 |
 | `GCC_ARM_CM33_SECURE` | Cortex-M33 (TrustZone 安全侧支持组件) | 映射已实现，尚未使用完整安全工程验证 |
 | `GCC_ARM_CM33_NONSECURE` | Cortex-M33 (TrustZone 非安全侧) | 映射已实现，尚未使用完整实际工程验证 |
 | `GCC_ARM_CM33_NTZ_NONSECURE` | Cortex-M33 (不使用 TrustZone) | 映射已实现，尚未使用完整实际工程验证 |
@@ -322,10 +340,11 @@ Make 和 CMake 使用相同的参数名与参数值。构建系统只需要设�
 | `GCC_ARM_CM55_NTZ_NONSECURE` | Cortex-M55 (不使用 TrustZone) | 映射已实现，尚未使用完整实际工程验证 |
 
 > **常见选型参考**：
+> - STM32F0xx / STM32L0xx → `GCC_ARM_CM0`
 > - STM32F1xx → `GCC_ARM_CM3`
 > - STM32F4xx / STM32G4xx → `GCC_ARM_CM4F`
 > - STM32F7xx (带 FPU) → `GCC_ARM_CM7`
-> - STM32L0xx → `GCC_ARM_CM0`
+> - STM32H7xx（包括 STM32H7B0VBT6）→ `GCC_ARM_CM7`
 > - STM32U5xx（TrustZone 非安全侧并使用安全服务）→ `GCC_ARM_CM33_NONSECURE`
 > - STM32U5xx（不使用 TrustZone）→ `GCC_ARM_CM33_NTZ_NONSECURE`
 > - STM32U5xx（安全侧支持组件）→ `GCC_ARM_CM33_SECURE`
@@ -498,21 +517,18 @@ A: 从 `.map` 文件确认 `.data/.bss` 的主要占用者，重点检查 `confi
 
 # 测试状态
 
-| FreeRTOS 版本 | MCU | 构建系统 | 状态 |
-|--------------|-----|---------|------|
-| V11.3.0 | STM32F411CEU6 | Make | ✅ |
-| V11.3.0 | STM32F411CEU6 | CMake | ✅ |
+| FreeRTOS 版本 | MCU | 构建系统 | 验证范围 | 状态 |
+|--------------|-----|---------|----------|------|
+| V11.3.0 | STM32F042G6U6 | GNU Make | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
+| V11.3.0 | STM32F042G6U6 | Cube-CMake | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
+| V11.3.0 | STM32F103C8T6 | GNU Make | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
+| V11.3.0 | STM32F103C8T6 | Cube-CMake | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
+| V11.3.0 | STM32F411CEU6 | GNU Make | 任务创建、调度、延时和 RTT 日志输出的实机运行验证 | 通过 |
+| V11.3.0 | STM32F411CEU6 | Cube-CMake | 任务创建、调度、延时和 RTT 日志输出的实机运行验证 | 通过 |
+| V11.3.0 | STM32H7B0VBT6 | GNU Make | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
+| V11.3.0 | STM32H7B0VBT6 | Cube-CMake | 完整编译、链接、烧录及 FreeRTOS 实机运行验证 | 通过 |
 
-以上两项为任务创建、调度、延时和 RTT 日志输出的实际运行验证。
-
-模板还完成了以下编译检查，这些检查不等同于对应开发板的实机运行验证：
-
-| MCU 工程参数 | FreeRTOS port | 检查范围 | 状态 |
-|-------------|---------------|----------|------|
-| STM32F042x6 | `GCC_ARM_CM0` | 6 KB RAM、HAL、RTT、单任务和完整 GNU Make 链接 | 通过 |
-| STM32F103xB | `GCC_ARM_CM3` | 公共内核、heap、回调和 `port.c` | 通过 |
-| STM32F411xE | `GCC_ARM_CM4F` | 公共内核、heap、回调、`port.c` 和最小 Cube-CMake 集成 | 通过 |
-| STM32H7B0xx | `GCC_ARM_CM7` | 公共内核、heap、回调和 `ARM_CM7/r0p1/port.c` | 通过 |
+以上记录均已在目标硬件上完成实机运行验证。
 
 **实机验证环境**：
 macOS 12.2.1 (M1)
@@ -526,7 +542,7 @@ CMake 4.1.2（最小 Cube-CMake 集成检查）
 # 修订记录
 | 文档版本 | 修订时间 | 修改内容 | 备注 |
 |--|--|--|--|
-|2.0.0|2026/07/28|同步通用配置模板、构建接口、端口映射和验证文档|对应 11.3.0-2.0.0|
+|2.0.0|2026/08/03|同步通用配置模板、构建接口、端口映射和验证文档；补充 STM32F042G6U6、STM32F103C8T6、STM32F411CEU6、STM32H7B0VBT6 双构建实机验证及 port 选型信息|对应 11.3.0-2.0.0 正式版本|
 |1.0.0|2026/04/04|创建文档,并对工程进行了描述||
 
 ---
@@ -534,7 +550,7 @@ CMake 4.1.2（最小 Cube-CMake 集成检查）
 # 更新记录
 版本格式为 `<FreeRTOS-Kernel 版本>-<移植层版本>`。前半部分跟随 FreeRTOS-Kernel tag，后半部分遵循语义化版本。由于 2.0.0 统一了 Make/CMake 参数名且不兼容旧的 `CFG_*` 配置，因此提升移植层主版本号。
 
-## [11.3.0-2.0.0] - 2026-07-28
+## [11.3.0-2.0.0] - 2026-08-03
 
 ### Breaking Changes
 
@@ -564,6 +580,9 @@ CMake 4.1.2（最小 Cube-CMake 集成检查）
 - `rtos_clone` 只初始化项目依赖的一级 `FreeRTOS-Kernel` 子模块，避免拉取无关的 ThirdParty port 仓库。
 - README 细化全部模板参数的意义，并增加按 SRAM 容量选择 heap、任务栈和可选功能的起始配置及验证方法。
 - README 区分源码映射检查、编译检查和实机验证。
+- README 补充 STM32F042G6U6、STM32F103C8T6 和 STM32H7B0VBT6 的 GNU Make、Cube-CMake 双构建实机验证记录。
+- README 明确 STM32H7B0VBT6 使用 `GCC_ARM_CM7`，对应官方 `ARM_CM7/r0p1` port。
+- README 同步 Cortex-M0、M3、M4F 和 M7 port 的验证说明与实机测试状态，并补充 STM32F0xx 的 port 选型参考。
 
 ## [11.3.0-1.0.0] - 2026-04-04
 
